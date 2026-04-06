@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vendor Tracker">
+<title>Vendor Repair Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #0f1117;
+  --surface:    #181c27;
+  --surface2:   #1f2436;
+  --border:     #2a2f42;
+  --border2:    #363d54;
+  --text:       #e8eaf0;
+  --muted:      #7b82a0;
+  --accent:     #4f8ef7;
+  --accent-dim: #1e3a6e;
+  --red:        #e03434;
+  --red-dim:    #3d1515;
+  --red-muted:  #e0343418;
+  --pending-bg:#162440; --pending-fg:#6eaaff; --pending-dot:#4f8ef7;
+  --inprog-bg: #2a1f08; --inprog-fg: #f5b942; --inprog-dot: #e09a1a;
+  --done-bg:   #0d2818; --done-fg:   #4eca7e; --done-dot:   #2ab564;
+  --cancel-bg: #1e1e24; --cancel-fg: #7b82a0; --cancel-dot: #555a70;
+  --radius:10px; --radius-lg:16px;
+  --font:'DM Sans',sans-serif; --mono:'DM Mono',monospace; --syne:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.5}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;position:sticky;top:0;z-index:50}
+.header-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;min-height:58px;gap:12px;flex-wrap:wrap;padding:8px 0}
+.logo{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;letter-spacing:-.3px}
+.logo-icon{width:30px;height:30px;border-radius:8px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;font-size:15px}
+.nav-tabs{display:flex;gap:2px;background:var(--surface2);border-radius:var(--radius);padding:3px}
+.nav-tab{padding:6px 14px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--muted);transition:all .15s;font-family:var(--font)}
+.nav-tab.active{background:var(--surface);color:var(--text)}
+.nav-tab:hover:not(.active){color:var(--text)}
+.btn-add{padding:7px 16px;border-radius:var(--radius);background:var(--accent);color:#fff;font-size:13px;font-weight:600;font-family:var(--font);border:none;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.btn-add:hover{opacity:.85}
+
+/* VIEWS */
+.view{display:none}.view.active{display:block}
+.main{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+
+/* CALENDAR */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.cal-month{font-size:20px;font-weight:600;letter-spacing:-.5px}
+.cal-arrows{display:flex;gap:6px}
+.arr-btn{width:34px;height:34px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.arr-btn:hover{background:var(--border2)}
+.cal-today-btn{padding:6px 14px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s}
+.cal-today-btn:hover{color:var(--text)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--border);gap:1px}
+.cal-dow{background:var(--surface2);padding:10px 0;text-align:center;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.cal-cell{background:var(--surface);min-height:110px;padding:8px;cursor:pointer;transition:background .12s}
+.cal-cell:hover{background:var(--surface2)}
+.cal-cell.faded{background:var(--bg)}.cal-cell.faded .cal-day-num{color:#3a3f55}
+.cal-cell.is-today{background:#141928}
+.cal-cell.is-today .cal-day-num{color:var(--accent);background:var(--accent-dim);border-radius:6px;padding:1px 6px;width:fit-content}
+.cal-day-num{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;font-family:var(--mono)}
+.chip{font-size:11px;font-weight:500;padding:3px 7px;border-radius:5px;margin-bottom:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%;display:block;cursor:pointer}
+.chip-pending{background:var(--pending-bg);color:var(--pending-fg)}
+.chip-in-progress{background:var(--inprog-bg);color:var(--inprog-fg)}
+.chip-done{background:var(--done-bg);color:var(--done-fg)}
+.chip-cancelled{background:var(--cancel-bg);color:var(--cancel-fg)}
+.chip-more{font-size:10px;color:var(--muted);padding:1px 4px}
+
+/* LIST */
+.list-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.filter-btn{padding:6px 14px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:500;font-family:var(--font);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
+.filter-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.filter-dot{width:7px;height:7px;border-radius:50%}
+.list-sort{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.sort-label{font-size:12px;color:var(--muted)}
+.sort-select{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);padding:5px 10px;border-radius:8px;cursor:pointer;outline:none}
+.list-items{display:flex;flex-direction:column;gap:8px}
+.list-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;display:flex;gap:14px;align-items:flex-start;cursor:pointer;transition:border-color .15s,background .15s}
+.list-item:hover{border-color:var(--border2);background:var(--surface2)}
+.list-item-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.btn-email-job{padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;background:var(--red-dim);color:var(--red);border:1px solid #5a2020;cursor:pointer;font-family:var(--font);white-space:nowrap;transition:opacity .15s}
+.btn-email-job:hover{opacity:.8}
+.status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.dot-pending{background:var(--pending-dot)}.dot-in-progress{background:var(--inprog-dot)}
+.dot-done{background:var(--done-dot)}.dot-cancelled{background:var(--cancel-dot)}
+.li-body{flex:1;min-width:0}
+.li-vendor{font-size:14px;font-weight:600;color:var(--text)}
+.li-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.li-meta-sep{color:var(--border2)}
+.status-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;flex-shrink:0}
+.badge-pending{background:var(--pending-bg);color:var(--pending-fg)}
+.badge-in-progress{background:var(--inprog-bg);color:var(--inprog-fg)}
+.badge-done{background:var(--done-bg);color:var(--done-fg)}
+.badge-cancelled{background:var(--cancel-bg);color:var(--cancel-fg)}
+.stats-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;display:flex;align-items:center;gap:8px;flex:1;min-width:110px}
+.stat-num{font-size:22px;font-weight:700;font-family:var(--mono)}
+.stat-lbl{font-size:11px;color:var(--muted);font-weight:500}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px}
+
+/* JOB MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center;padding:20px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 4px 24px rgba(0,0,0,.4)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-size:16px;font-weight:600}
+.modal-close{width:28px;height:28px;border-radius:7px;background:var(--surface2);border:none;color:var(--muted);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{color:var(--text)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;font-size:14px;color:var(--text);font-family:var(--font);transition:border-color .15s;outline:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:72px}
+.field select option{background:var(--surface2)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-actions{display:flex;gap:8px;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.btn{padding:9px 18px;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:opacity .15s}
+.btn-ghost{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{color:var(--text)}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{opacity:.85}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid #5a2020}.btn-danger:hover{background:#4d1c1c}
+
+/* EMAIL GENERATOR */
+.email-wrap{max-width:680px;margin:0 auto}
+.email-section-title{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--red);margin:24px 0 10px}
+.email-section-title:first-child{margin-top:0}
+.email-field{margin-bottom:14px}
+.email-field label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px}
+.email-field label .req{color:var(--red)}
+.email-field label .opt{color:var(--border2);font-size:11px}
+.email-field input,.email-field select,.email-field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;font-size:14px;color:var(--text);font-family:var(--font);transition:border-color .15s,box-shadow .15s;outline:none}
+.email-field input:focus,.email-field select:focus,.email-field textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-muted)}
+.email-field textarea{resize:vertical;min-height:80px}
+.email-field select option{background:var(--surface2)}
+
+.job-picker-banner{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.job-picker-label{font-size:13px;color:var(--muted);flex:1;min-width:180px}
+.job-picker-label strong{color:var(--text)}
+.job-picker-select{background:var(--surface);border:1px solid var(--border2);color:var(--text);font-size:13px;font-family:var(--font);padding:8px 12px;border-radius:var(--radius);cursor:pointer;outline:none;flex:2;min-width:200px}
+.btn-load-job{padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:600;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:opacity .15s}
+.btn-load-job:hover{opacity:.8}
+
+.repairs-table{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface2)}
+.rt-header{display:grid;grid-template-columns:1fr 110px 36px;gap:6px;padding:8px 10px;background:var(--surface);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.rt-row{display:grid;grid-template-columns:1fr 110px 36px;gap:6px;padding:8px 10px;border-top:1px solid var(--border);align-items:center}
+.rt-row input{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-size:13px;border-radius:6px;font-family:var(--font);outline:none}
+.rt-row input:focus{border-color:var(--red)}
+.btn-add-row{width:100%;padding:10px;border:1px dashed var(--border2);border-top:none;background:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:var(--font);border-radius:0 0 var(--radius) var(--radius);transition:background .15s}
+.btn-add-row:hover{background:var(--surface2)}
+.del-btn{background:var(--red-dim);border:1px solid #5a2020;color:var(--red);cursor:pointer;font-size:13px;padding:6px 8px;border-radius:5px;transition:background .15s}
+.del-btn:hover{background:#4d1c1c}
+
+.status-chips{display:flex;gap:8px;flex-wrap:wrap}
+.s-chip{padding:8px 14px;border-radius:20px;border:1px solid var(--border);font-size:12px;cursor:pointer;background:var(--surface2);color:var(--muted);font-family:var(--font);transition:all .15s;user-select:none}
+.s-chip.active{background:var(--red-dim);border-color:var(--red);color:#ff8080;font-weight:500}
+
+.generate-btn{width:100%;margin-top:28px;padding:15px;background:var(--red);color:#fff;border:none;border-radius:var(--radius);font-family:var(--syne);font-size:15px;font-weight:700;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s}
+.generate-btn:hover{opacity:.88}
+
+.email-out-placeholder{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px}
+.email-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;display:none}
+.email-meta{padding:14px 16px;border-bottom:1px solid var(--border2);background:var(--surface2)}
+.email-meta-row{display:flex;gap:8px;font-size:13px;padding:3px 0;align-items:baseline}
+.em-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);width:56px;flex-shrink:0}
+.em-value{color:var(--text);font-weight:500;flex:1;word-break:break-all}
+#emailBody{width:100%;padding:16px;font-family:var(--font);font-size:13px;line-height:1.75;color:var(--text);background:var(--bg);border:none;min-height:320px;resize:vertical;outline:none;white-space:pre-wrap;display:block}
+.action-bar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.action-btn{padding:12px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s}
+.action-btn:hover{background:var(--border2)}
+.action-btn.full{grid-column:1/-1;background:var(--surface);border-color:var(--border2)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);color:#fff;padding:12px 22px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;transition:transform .3s cubic-bezier(.22,1,.36,1);pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@media(max-width:640px){
+  .logo span{display:none}
+  .cal-cell{min-height:72px;padding:5px}
+  .chip{font-size:10px;padding:2px 5px}
+  .cal-month{font-size:16px}
+  .main{padding:16px 12px 60px}
+  .nav-tab{padding:6px 8px;font-size:12px}
+  .field-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">🔧</div>
+      <span>Vendor Repair Tracker</span>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('calendar',this)">📅 Calendar</button>
+      <button class="nav-tab" onclick="switchTab('list',this)">📋 List</button>
+      <button class="nav-tab" onclick="switchTab('email',this)">✉️ ETA Email</button>
+    </div>
+    <button class="btn-add" onclick="openAdd()">+ Add Job</button>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- CALENDAR -->
+  <div id="view-calendar" class="view active">
+    <div class="cal-nav">
+      <div class="cal-month" id="calMonthLabel"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="cal-today-btn" onclick="goToday()">Today</button>
+        <div class="cal-arrows">
+          <button class="arr-btn" onclick="changeMonth(-1)">&#8249;</button>
+          <button class="arr-btn" onclick="changeMonth(1)">&#8250;</button>
+        </div>
+      </div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <!-- LIST -->
+  <div id="view-list" class="view">
+    <div class="stats-bar" id="statsBar"></div>
+    <div class="list-filters" id="listFilters"></div>
+    <div class="list-sort">
+      <span class="sort-label">Sort by</span>
+      <select class="sort-select" id="sortSelect" onchange="renderList()">
+        <option value="date-asc">Date (oldest first)</option>
+        <option value="date-desc">Date (newest first)</option>
+        <option value="vendor">Vendor name</option>
+        <option value="status">Status</option>
+      </select>
+    </div>
+    <div class="list-items" id="listItems"></div>
+  </div>
+
+  <!-- EMAIL GENERATOR -->
+  <div id="view-email" class="view">
+    <div class="email-wrap">
+      <div class="job-picker-banner">
+        <div class="job-picker-label"><strong>Auto-fill from a tracked job</strong><br>Pick a job to pre-populate the form below.</div>
+        <select class="job-picker-select" id="jobPickerSelect"><option value="">— Select a job —</option></select>
+        <button class="btn-load-job" onclick="loadJobIntoEmail()">Load Job</button>
+      </div>
+      <div style="display:flex;gap:2px;background:var(--surface2);border-radius:var(--radius);padding:3px;margin-bottom:20px;width:fit-content">
+        <button class="nav-tab active" id="etab-form" onclick="switchETab('form')">📋 Details</button>
+        <button class="nav-tab" id="etab-out" onclick="switchETab('out')">✉️ Preview</button>
+      </div>
+
+      <!-- FORM -->
+      <div id="epanel-form">
+        <div class="email-section-title">Vendor Info</div>
+        <div class="email-field"><label>Vendor / Company Name <span class="req">*</span></label><input type="text" id="eVendorName" placeholder="e.g. ABC Facility Services"></div>
+        <div class="email-field"><label>Contact Name <span class="req">*</span></label><input type="text" id="eContactName" placeholder="e.g. Mike Johnson"></div>
+        <div class="email-field"><label>Vendor Email <span class="opt">(optional)</span></label><input type="email" id="eVendorEmail" placeholder="contact@vendorcompany.com" inputmode="email"></div>
+
+        <div class="email-section-title">Repair Details</div>
+        <div class="repairs-table" id="repairsTable">
+          <div class="rt-header"><span>What needs repairing</span><span>Work Order #</span><span></span></div>
+        </div>
+        <button class="btn-add-row" onclick="addRepairRow()">+ Add repair item</button>
+        <div style="margin-top:14px"></div>
+        <div class="email-field"><label>Date Repair Was Requested</label><input type="date" id="eRequestDate"></div>
+        <div class="email-field"><label>Original ETA Given by Vendor <span class="opt">(if provided)</span></label><input type="date" id="eOriginalEta"></div>
+
+        <div class="email-section-title">Current Situation</div>
+        <div class="email-field">
+          <label>Status as far as you know</label>
+          <div class="status-chips">
+            <button class="s-chip active" data-val="no_update" onclick="setChip(this)">No update yet</button>
+            <button class="s-chip" data-val="waiting_parts" onclick="setChip(this)">Waiting on parts</button>
+            <button class="s-chip" data-val="tech_not_scheduled" onclick="setChip(this)">Tech not scheduled</button>
+            <button class="s-chip" data-val="in_progress" onclick="setChip(this)">Work in progress</button>
+            <button class="s-chip" data-val="past_eta" onclick="setChip(this)">Past original ETA</button>
+          </div>
+        </div>
+        <div class="email-field"><label>Additional Context <span class="opt">(optional)</span></label><textarea id="eExtraNotes" placeholder="e.g. Affecting guest-facing areas, HVAC down since Monday..."></textarea></div>
+
+        <div class="email-section-title">Your Info</div>
+        <div class="email-field"><label>Your Name <span class="req">*</span></label><input type="text" id="eYourName" placeholder="e.g. Maria Lopez"></div>
+        <div class="email-field"><label>Store / Site Number</label><input type="text" id="eStoreNum" placeholder="e.g. #1234"></div>
+        <div class="email-field"><label>Address</label><input type="text" id="eStoreAddress" placeholder="e.g. 123 Main St, Chicago, IL 60601"></div>
+
+        <button class="generate-btn" onclick="generateEmail()">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+          Generate Email
+        </button>
+      </div>
+
+      <!-- OUTPUT -->
+      <div id="epanel-out" style="display:none">
+        <div class="email-out-placeholder" id="emailPlaceholder">
+          <svg width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24" style="opacity:.25;margin-bottom:12px;display:block;margin-left:auto;margin-right:auto"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Fill in the Details tab and tap <strong>Generate Email</strong>.
+        </div>
+        <div class="email-card" id="emailCard">
+          <div class="email-meta">
+            <div class="email-meta-row"><span class="em-label">To</span><span class="em-value" id="displayTo"></span></div>
+            <div class="email-meta-row"><span class="em-label">Subject</span><span class="em-value" id="displaySubject"></span></div>
+          </div>
+          <textarea id="emailBody"></textarea>
+        </div>
+        <div class="action-bar" id="actionBar" style="display:none">
+          <button class="action-btn" onclick="copyBody()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy Body
+          </button>
+          <button class="action-btn" onclick="copyAll()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 17H5a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v3"/><rect x="11" y="11" width="10" height="10" rx="2"/></svg>Copy All
+          </button>
+          <button class="action-btn full" onclick="openMailto()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Open in Mail App
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- JOB MODAL -->
+<div class="overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Add Job</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="field"><label>Vendor / Job Description *</label><input id="fVendor" type="text" placeholder="e.g. RTU-10 no cool"></div>
+    <div class="field"><label>Contact Name</label><input id="fContact" type="text" placeholder="e.g. John Brennan"></div>
+    <div class="field-row">
+      <div class="field"><label>Phone</label><input id="fPhone" type="tel" placeholder="714-555-0100"></div>
+      <div class="field"><label>Email</label><input id="fEmail" type="email" placeholder="vendor@email.com"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Escalation Date</label><input id="fDate" type="date"></div>
+      <div class="field"><label>Time</label><input id="fTime" type="time"></div>
+    </div>
+    <div class="field"><label>Job / Repair Type</label><input id="fJob" type="text" placeholder="e.g. AC inspection"></div>
+    <div class="field"><label>Status</label>
+      <select id="fStatus">
+        <option value="Pending">Pending</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Done">Done</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="fNotes" placeholder="Additional details…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="btnDelete" style="display:none" onclick="deleteJob()">Delete</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveJob()">Save Job</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY='vendorJobs_v1';
+let jobs=[];
+try{jobs=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){}
+function persist(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(jobs))}catch(e){}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+
+const today=new Date();
+let calYear=today.getFullYear(),calMonth=today.getMonth();
+let editId=null,listFilter='all',currentTab='calendar';
+let emailStatus='no_update',rowCount=0;
+
+const STATUS_ORDER=['Pending','In Progress','Done','Cancelled'];
+function chipCls(s){return 'chip chip-'+s.toLowerCase().replace(' ','-')}
+function dotCls(s){return 'status-dot dot-'+s.toLowerCase().replace(' ','-')}
+function badgeCls(s){return 'status-badge badge-'+s.toLowerCase().replace(' ','-')}
+function fmtDate(d){if(!d)return '';return new Date(d+'T12:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+function fmtDateLong(d){if(!d)return '';return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}
+function fmtTime(t){if(!t)return '';const[h,m]=t.split(':');const hr=parseInt(h);return(hr%12||12)+':'+m+(hr<12?' AM':' PM')}
+function showToast(msg,color){const t=document.getElementById('toast');t.textContent=msg;t.style.background=color||'#2a7a4a';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
+
+function switchTab(tab,el){
+  currentTab=tab;
+  document.querySelectorAll('.nav-tabs .nav-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('view-'+tab).classList.add('active');
+  if(tab==='list')renderList();
+  if(tab==='calendar')renderCal();
+  if(tab==='email')refreshJobPicker();
+}
+
+// CALENDAR
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function changeMonth(d){calMonth+=d;if(calMonth>11){calMonth=0;calYear++}if(calMonth<0){calMonth=11;calYear--}renderCal()}
+function goToday(){calYear=today.getFullYear();calMonth=today.getMonth();renderCal()}
+function renderCal(){
+  document.getElementById('calMonthLabel').textContent=MONTHS[calMonth]+' '+calYear;
+  const firstDow=new Date(calYear,calMonth,1).getDay();
+  const daysInMo=new Date(calYear,calMonth+1,0).getDate();
+  const prevLast=new Date(calYear,calMonth,0).getDate();
+  let html=DAYS.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=firstDow-1;i>=0;i--)html+=`<div class="cal-cell faded"><div class="cal-day-num">${prevLast-i}</div></div>`;
+  for(let d=1;d<=daysInMo;d++){
+    const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
+    const ds=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const dj=jobs.filter(j=>j.date===ds);
+    let chips=dj.slice(0,3).map(j=>`<span class="${chipCls(j.status)}" onclick="openEdit('${j.id}',event)">${j.vendor}</span>`).join('');
+    if(dj.length>3)chips+=`<span class="chip chip-more">+${dj.length-3} more</span>`;
+    html+=`<div class="cal-cell${isToday?' is-today':''}" onclick="openAddDate('${ds}')"><div class="cal-day-num">${d}</div>${chips}</div>`;
+  }
+  const rem=(7-((firstDow+daysInMo)%7))%7;
+  for(let i=1;i<=rem;i++)html+=`<div class="cal-cell faded"><div class="cal-day-num">${i}</div></div>`;
+  document.getElementById('calGrid').innerHTML=html;
+}
+
+// LIST
+function renderList(){
+  const counts={all:jobs.length};
+  STATUS_ORDER.forEach(s=>{counts[s]=jobs.filter(j=>j.status===s).length});
+  document.getElementById('statsBar').innerHTML=[
+    ['Total Jobs',jobs.length,'var(--text)'],
+    ['Pending',counts['Pending'],'var(--pending-fg)'],
+    ['In Progress',counts['In Progress'],'var(--inprog-fg)'],
+    ['Done',counts['Done'],'var(--done-fg)'],
+  ].map(([lbl,num,clr])=>`<div class="stat-card"><div><div class="stat-num" style="color:${clr}">${num}</div><div class="stat-lbl">${lbl}</div></div></div>`).join('');
+
+  const filterDefs=[
+    {key:'all',label:'All',color:'var(--muted)'},
+    {key:'Pending',label:'Pending',color:'var(--pending-dot)'},
+    {key:'In Progress',label:'In Progress',color:'var(--inprog-dot)'},
+    {key:'Done',label:'Done',color:'var(--done-dot)'},
+    {key:'Cancelled',label:'Cancelled',color:'var(--cancel-dot)'},
+  ];
+  document.getElementById('listFilters').innerHTML=filterDefs.map(f=>
+    `<button class="filter-btn${listFilter===f.key?' active':''}" onclick="setFilter('${f.key}')">
+      <span class="filter-dot" style="background:${f.color}"></span>${f.label}
+      <span style="color:var(--muted);font-size:11px">${f.key==='all'?counts.all:(counts[f.key]||0)}</span>
+    </button>`
+  ).join('');
+
+  let filtered=listFilter==='all'?[...jobs]:jobs.filter(j=>j.status===listFilter);
+  const sort=document.getElementById('sortSelect').value;
+  filtered.sort((a,b)=>{
+    if(sort==='date-asc')return(a.date||'').localeCompare(b.date||'');
+    if(sort==='date-desc')return(b.date||'').localeCompare(a.date||'');
+    if(sort==='vendor')return(a.vendor||'').localeCompare(b.vendor||'');
+    if(sort==='status')return STATUS_ORDER.indexOf(a.status)-STATUS_ORDER.indexOf(b.status);
+    return 0;
+  });
+  if(!filtered.length){document.getElementById('listItems').innerHTML=`<div class="empty-state">No jobs found.</div>`;return}
+  document.getElementById('listItems').innerHTML=filtered.map(j=>{
+    const meta=[j.date?fmtDate(j.date):'',j.time?fmtTime(j.time):'',j.job?j.job:'',j.contact?j.contact:''].filter(Boolean).join(' <span class="li-meta-sep">·</span> ');
+    return `<div class="list-item" onclick="openEdit('${j.id}')">
+      <div class="${dotCls(j.status)}"></div>
+      <div class="li-body">
+        <div class="li-vendor">${j.vendor||'Unknown'}</div>
+        <div class="li-meta">${meta}</div>
+        ${j.notes?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${j.notes}</div>`:''}
+      </div>
+      <div class="list-item-actions">
+        <button class="btn-email-job" onclick="emailThisJob('${j.id}',event)">✉ ETA Email</button>
+        <span class="${badgeCls(j.status)}">${j.status}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function setFilter(f){listFilter=f;renderList()}
+
+// JOB MODAL
+function openAdd(){
+  editId=null;
+  document.getElementById('modalTitle').textContent='Add Job';
+  document.getElementById('btnDelete').style.display='none';
+  ['fVendor','fContact','fPhone','fEmail','fDate','fTime','fJob','fNotes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fStatus').value='Pending';
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('fVendor').focus(),50);
+}
+function openAddDate(ds){openAdd();document.getElementById('fDate').value=ds}
+function openEdit(id,e){
+  if(e)e.stopPropagation();
+  const j=jobs.find(x=>x.id===id);if(!j)return;
+  editId=id;
+  document.getElementById('modalTitle').textContent='Edit Job';
+  document.getElementById('btnDelete').style.display='';
+  document.getElementById('fVendor').value=j.vendor||'';
+  document.getElementById('fContact').value=j.contact||'';
+  document.getElementById('fPhone').value=j.phone||'';
+  document.getElementById('fEmail').value=j.email||'';
+  document.getElementById('fDate').value=j.date||'';
+  document.getElementById('fTime').value=j.time||'';
+  document.getElementById('fJob').value=j.job||'';
+  document.getElementById('fStatus').value=j.status||'Pending';
+  document.getElementById('fNotes').value=j.notes||'';
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal(){document.getElementById('overlay').classList.remove('open')}
+function overlayClick(e){if(e.target.id==='overlay')closeModal()}
+function saveJob(){
+  const vendor=document.getElementById('fVendor').value.trim();
+  if(!vendor){document.getElementById('fVendor').focus();return}
+  const job={
+    id:editId||uid(),vendor,
+    contact:document.getElementById('fContact').value.trim(),
+    phone:document.getElementById('fPhone').value.trim(),
+    email:document.getElementById('fEmail').value.trim(),
+    date:document.getElementById('fDate').value,
+    time:document.getElementById('fTime').value,
+    job:document.getElementById('fJob').value.trim(),
+    status:document.getElementById('fStatus').value,
+    notes:document.getElementById('fNotes').value.trim(),
+  };
+  jobs=editId?jobs.map(j=>j.id===editId?job:j):[...jobs,job];
+  persist();closeModal();renderCal();
+  if(currentTab==='list')renderList();
+  if(currentTab==='email')refreshJobPicker();
+  showToast(editId?'✓ Job updated':'✓ Job added','#2a7a4a');
+}
+function deleteJob(){
+  if(!editId||!confirm('Delete this job?'))return;
+  jobs=jobs.filter(j=>j.id!==editId);
+  persist();closeModal();renderCal();
+  if(currentTab==='list')renderList();
+  showToast('Job deleted','#b45309');
+}
+
+// EMAIL GENERATOR
+function switchETab(tab){
+  document.getElementById('etab-form').classList.toggle('active',tab==='form');
+  document.getElementById('etab-out').classList.toggle('active',tab==='out');
+  document.getElementById('epanel-form').style.display=tab==='form'?'':'none';
+  document.getElementById('epanel-out').style.display=tab==='out'?'':'none';
+}
+function refreshJobPicker(){
+  const sel=document.getElementById('jobPickerSelect');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Select a job —</option>';
+  const active=jobs.filter(j=>j.status!=='Done'&&j.status!=='Cancelled').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const closed=jobs.filter(j=>j.status==='Done'||j.status==='Cancelled');
+  active.forEach(j=>{
+    const opt=document.createElement('option');
+    opt.value=j.id;
+    opt.textContent=j.vendor+(j.date?' · '+fmtDate(j.date):'')+' ['+j.status+']';
+    sel.appendChild(opt);
+  });
+  if(closed.length){
+    const sep=document.createElement('option');sep.disabled=true;sep.textContent='── Done / Cancelled ──';sel.appendChild(sep);
+    closed.forEach(j=>{const opt=document.createElement('option');opt.value=j.id;opt.textContent=j.vendor+(j.date?' · '+fmtDate(j.date):'')+' ['+j.status+']';sel.appendChild(opt)});
+  }
+  if(cur)sel.value=cur;
+}
+function loadJobIntoEmail(){
+  const id=document.getElementById('jobPickerSelect').value;
+  if(!id){showToast('Select a job first','#b45309');return}
+  const j=jobs.find(x=>x.id===id);if(!j)return;
+  document.getElementById('eVendorName').value=j.vendor||'';
+  document.getElementById('eContactName').value=j.contact||'';
+  document.getElementById('eVendorEmail').value=j.email||'';
+  document.getElementById('eRequestDate').value=j.date||'';
+  document.getElementById('repairsTable').querySelectorAll('.rt-row').forEach(r=>r.remove());
+  rowCount=0;
+  addRepairRow(j.job||j.vendor,'');
+  const chipMap={'Pending':'no_update','In Progress':'in_progress','Done':'no_update','Cancelled':'no_update'};
+  const chipVal=chipMap[j.status]||'no_update';
+  document.querySelectorAll('.s-chip').forEach(c=>c.classList.toggle('active',c.dataset.val===chipVal));
+  emailStatus=chipVal;
+  if(j.notes)document.getElementById('eExtraNotes').value=j.notes;
+  showToast('✓ Job loaded into email form','#2a7a4a');
+}
+function emailThisJob(id,e){
+  if(e)e.stopPropagation();
+  switchTab('email');
+  setTimeout(()=>{document.getElementById('jobPickerSelect').value=id;loadJobIntoEmail()},80);
+}
+function addRepairRow(desc,wo){
+  rowCount++;const id=rowCount;
+  const row=document.createElement('div');row.className='rt-row';row.id='rrow-'+id;
+  row.innerHTML=`<input type="text" class="r-desc" placeholder="e.g. HVAC — stockroom" value="${desc||''}"><input type="text" class="r-wo" placeholder="WO #" value="${wo||''}" inputmode="numeric"><button class="del-btn" onclick="delRow(${id})">✕</button>`;
+  document.getElementById('repairsTable').appendChild(row);
+}
+function delRow(id){const el=document.getElementById('rrow-'+id);if(el)el.remove()}
+function setChip(el){document.querySelectorAll('.s-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');emailStatus=el.dataset.val}
+function getRepairs(){return Array.from(document.querySelectorAll('#repairsTable .rt-row')).map(r=>({desc:r.querySelector('.r-desc').value.trim(),wo:r.querySelector('.r-wo').value.trim()})).filter(r=>r.desc)}
+function generateEmail(){
+  const vendorName=document.getElementById('eVendorName').value.trim();
+  const contactName=document.getElementById('eContactName').value.trim();
+  const vendorEmail=document.getElementById('eVendorEmail').value.trim();
+  const requestDate=document.getElementById('eRequestDate').value;
+  const originalEta=document.getElementById('eOriginalEta').value;
+  const extraNotes=document.getElementById('eExtraNotes').value.trim();
+  const yourName=document.getElementById('eYourName').value.trim();
+  const storeNum=document.getElementById('eStoreNum').value.trim();
+  const storeAddr=document.getElementById('eStoreAddress').value.trim();
+  const repairs=getRepairs();
+  if(!vendorName||!contactName||!yourName||!repairs.length){showToast('⚠️ Fill in Vendor, Contact, Your Name & a repair item','#b45309');return}
+  const todayStr=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const allWOs=repairs.map(r=>r.wo).filter(Boolean);
+  const woTag=allWOs.length?` — WO# ${allWOs.join(' / ')}`:'';
+  const subject=`Repair Status & ETA Request${woTag}`;
+  const repairBlock=repairs.map(r=>`  • ${r.desc}${r.wo?'  (Work Order #: '+r.wo+')':''}`).join('\n');
+  let dateLine='';
+  if(requestDate)dateLine+=`\nThis repair was originally requested on ${fmtDateLong(requestDate)}.`;
+  if(originalEta)dateLine+=` At that time, we were given an estimated completion date of ${fmtDateLong(originalEta)}.`;
+  const statusMap={
+    no_update:'To date, we have not received an updated status or ETA on this work.',
+    waiting_parts:'We understand that parts may still be pending — could you give us a sense of when those are expected to arrive and when the repair will be completed?',
+    tech_not_scheduled:'We are still waiting for a technician to be scheduled. Could you let us know when we can expect someone on-site?',
+    in_progress:'We know work may already be underway — we just want to make sure we have a clear picture of where things stand and when we can expect completion.',
+    past_eta:'We wanted to follow up as the original estimated completion date has now passed and the repair is still outstanding.',
+  };
+  const statusLine=statusMap[emailStatus]||statusMap.no_update;
+  const notesLine=extraNotes?`\nFor additional context: ${extraNotes}`:'';
+  let storeLine='';
+  if(storeNum)storeLine+=`\n${storeNum}`;
+  if(storeAddr)storeLine+=`\n${storeAddr}`;
+  const body=`Hi ${contactName},\n\nHope you're having a good week! I'm reaching out to check in on the status of the following open repair${repairs.length>1?'s':''} at our facility:\n\n${repairBlock}\n${dateLine}\n\n${statusLine}${notesLine}\n\nCould you please provide:\n  1. Current status of the repair\n  2. Updated ETA for completion\n  3. Any parts, access, or approvals you may still need from our end\n\nWe appreciate everything your team does and just want to make sure we're staying on top of things on our end as well. Please don't hesitate to reach out if there's anything we can do to help move this along.\n\nThanks so much — looking forward to hearing from you!\n\n${yourName}${storeLine?'\n'+storeLine.trim():''}\n${todayStr}`;
+  document.getElementById('emailPlaceholder').style.display='none';
+  document.getElementById('emailCard').style.display='block';
+  document.getElementById('actionBar').style.display='grid';
+  document.getElementById('displayTo').textContent=vendorEmail||contactName+' <'+vendorName+'>';
+  document.getElementById('displaySubject').textContent=subject;
+  document.getElementById('emailBody').value=body;
+  window._subject=subject;window._toEmail=vendorEmail;
+  switchETab('out');
+  showToast('✓ Email generated!','#2a7a4a');
+}
+function copyBody(){const txt=document.getElementById('emailBody').value;if(navigator.clipboard)navigator.clipboard.writeText(txt).then(()=>showToast('✓ Email body copied!','#2a7a4a'));else{document.getElementById('emailBody').select();document.execCommand('copy');showToast('✓ Copied!','#2a7a4a')}}
+function copyAll(){const full=`Subject: ${document.getElementById('displaySubject').textContent}\n\n${document.getElementById('emailBody').value}`;if(navigator.clipboard)navigator.clipboard.writeText(full).then(()=>showToast('✓ Full email copied!','#2a7a4a'));else showToast('Use Copy Body on this device','#b45309')}
+function openMailto(){const to=window._toEmail||'';const subj=encodeURIComponent(window._subject||'');const body=encodeURIComponent(document.getElementById('emailBody').value);window.location.href=`mailto:${to}?subject=${subj}&body=${body}`}
+
+addRepairRow();
+renderCal();
+</script>
+</body>
+</html>
